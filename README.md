@@ -12,8 +12,8 @@ This bot automates the process of purchasing tickets. It searches for a specifie
 
 ## Prerequisites
 - **Chrome Driver**: Ensure that the Chrome Driver executable (`chromedriver.exe`) is correctly configured and accessible in your system's PATH.
-- **KKTix Account**: A KKTix account with the ability to purchase tickets is required.
-- **Python 3.x**: This script is written in Python and requires Python 3.x to run.
+- ** Account**: A  account with the ability to purchase tickets is required.
+
 - **Dependencies**:
   ```bash
   pip install selenium
