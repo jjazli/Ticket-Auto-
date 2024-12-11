@@ -1,155 +1,128 @@
-{
-  "nbformat": 4,
-  "nbformat_minor": 0,
-  "metadata": {
-    "colab": {
-      "provenance": []
-    },
-    "kernelspec": {
-      "name": "python3",
-      "display_name": "Python 3"
-    },
-    "language_info": {
-      "name": "python"
-    }
-  },
-  "cells": [
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "id": "U13lWzPklVND"
-      },
-      "outputs": [],
-      "source": [
-        "import time\n",
-        "import json\n",
-        "import html\n",
-        "import logging\n",
-        "import sys\n",
-        "from selenium import webdriver\n",
-        "from selenium.webdriver.common.by import By\n",
-        "from selenium.webdriver.common.keys import Keys\n",
-        "from selenium.webdriver.support.ui import WebDriverWait\n",
-        "from selenium.webdriver.support import expected_conditions as EC\n",
-        "from selenium.common.exceptions import NoSuchElementException\n",
-        "\n",
-        "# Configuration\n",
-        "BASE_URL = \"https://kktix.com/\"\n",
-        "EVENT_NAME = \"sample_event\"\n",
-        "CATEGORY_NAME = \"Entertainment\"\n",
-        "DESIRED_TICKET_PRICES = [\"800\", \"3,200\"]\n",
-        "TICKET_TYPE = \"B1\"\n",
-        "PREFERRED_PRICE = \"800\"\n",
-        "QUANTITY = \"2\"\n",
-        "REFRESH_INTERVAL = 1\n",
-        "MAX_WAIT_TIME = 900\n",
-        "USERNAME = \"your_username_here\"\n",
-        "PASSWORD = \"your_password_here\"\n",
-        "CHROME_DRIVER_PATH = \"chromedriver.exe\"\n",
-        "\n",
-        "# Setup logging\n",
-        "logging.basicConfig(\n",
-        "    level=logging.INFO,\n",
-        "    format=\"%(asctime)s - %(levelname)s - %(message)s\",\n",
-        "    handlers=[\n",
-        "        logging.FileHandler(\"bot_log.log\"),\n",
-        "        logging.StreamHandler(sys.stdout)\n",
-        "    ]\n",
-        ")\n",
-        "logger = logging.getLogger(__name__)\n",
-        "\n",
-        "class TicketAutomationBot:\n",
-        "    def __init__(self, driver):\n",
-        "        self.driver = driver\n",
-        "\n",
-        "    def locate_event(self):\n",
-        "        logger.info(f\"Searching for event: {EVENT_NAME}\")\n",
-        "        self.driver.find_element(By.LINK_TEXT, CATEGORY_NAME).click()\n",
-        "        search_field = self.driver.find_element(By.ID, \"search_form_search\")\n",
-        "        search_field.send_keys(EVENT_NAME)\n",
-        "        search_field.send_keys(Keys.RETURN)\n",
-        "\n",
-        "    def open_event_page(self):\n",
-        "        try:\n",
-        "            event_data = self.driver.find_element(By.XPATH, '//div[@data-react-class=\"SearchWrapper\"]')\n",
-        "            events = json.loads(event_data.get_attribute(\"data-react-props\")).get(\"data\", [])\n",
-        "\n",
-        "            for event in events:\n",
-        "                if html.unescape(event[\"name\"]).strip() == EVENT_NAME:\n",
-        "                    logger.info(f\"Target event found: {EVENT_NAME}\")\n",
-        "                    self.driver.find_element(By.XPATH, f'//a[@href=\"{event[\"public_url\"]}\"]').click()\n",
-        "                    self.driver.find_element(By.LINK_TEXT, \"Next Step\").click()\n",
-        "                    return\n",
-        "\n",
-        "            logger.error(\"Event not found or incorrect name specified.\")\n",
-        "        except Exception as e:\n",
-        "            logger.error(f\"Error navigating to event page: {e}\")\n",
-        "            raise\n",
-        "\n",
-        "    def login(self):\n",
-        "        logger.info(\"Logging in...\")\n",
-        "        self.driver.find_element(By.LINK_TEXT, \"Sign In\").click()\n",
-        "        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, 'user_login'))).send_keys(USERNAME)\n",
-        "        self.driver.find_element(By.ID, 'user_password').send_keys(PASSWORD)\n",
-        "        self.driver.find_element(By.XPATH, \"//input[@value='Sign In']\").click()\n",
-        "\n",
-        "    def purchase_ticket(self):\n",
-        "        logger.info(\"Starting ticket purchase process...\")\n",
-        "        while True:\n",
-        "            ticket_table = self.driver.find_elements(By.CLASS_NAME, \"display-table\")\n",
-        "            tickets = {\n",
-        "                self.driver.find_element(By.XPATH, f\"//div[@id='{ticket.get_attribute('id')}']//span[@class='ticket-name ng-binding']\").text: ticket.get_attribute('id')\n",
-        "                for ticket in ticket_table\n",
-        "            }\n",
-        "\n",
-        "            if TICKET_TYPE in tickets:\n",
-        "                ticket_id = tickets[TICKET_TYPE]\n",
-        "                logger.info(f\"Target ticket type located: {TICKET_TYPE}\")\n",
-        "\n",
-        "                try:\n",
-        "                    sale_status = self.driver.find_element(By.XPATH, f'//*[@id=\"{ticket_id}\"]/div/span[4]').text\n",
-        "                    if sale_status == \"Not Started\":\n",
-        "                        logger.info(\"Ticket sale not started. Refreshing...\")\n",
-        "                        time.sleep(REFRESH_INTERVAL)\n",
-        "                        self.driver.refresh()\n",
-        "                        continue\n",
-        "                    elif sale_status == \"Sold Out\":\n",
-        "                        logger.warning(\"Tickets are sold out.\")\n",
-        "                        break\n",
-        "\n",
-        "                    ticket_price = self.driver.find_element(By.XPATH, f\"//div[@id='{ticket_id}']//span[contains(@class,'ticket-price')]//span\").text\n",
-        "                    if PREFERRED_PRICE in ticket_price:\n",
-        "                        logger.info(f\"Found desired ticket price: {PREFERRED_PRICE}\")\n",
-        "                        self.driver.find_element(By.XPATH, f\"//div[@id='{ticket_id}']//input\").send_keys(QUANTITY)\n",
-        "                        self.driver.find_element(By.ID, \"person_agree_terms\").click()\n",
-        "                        self.driver.find_element(By.XPATH, \"//span[contains(text(),'Next Step')]\").click()\n",
-        "                        logger.info(\"Proceeding to purchase confirmation.\")\n",
-        "                        break\n",
-        "                except NoSuchElementException:\n",
-        "                    logger.error(\"Error during ticket selection process.\")\n",
-        "                    continue\n",
-        "\n",
-        "            logger.info(\"Refreshing page to check availability...\")\n",
-        "            self.driver.refresh()\n",
-        "\n",
-        "\n",
-        "def main():\n",
-        "    driver = webdriver.Chrome(CHROME_DRIVER_PATH)\n",
-        "    driver.get(BASE_URL)\n",
-        "\n",
-        "    bot = TicketAutomationBot(driver)\n",
-        "    try:\n",
-        "        bot.locate_event()\n",
-        "        bot.open_event_page()\n",
-        "        bot.login()\n",
-        "        bot.purchase_ticket()\n",
-        "    finally:\n",
-        "        driver.quit()\n",
-        "\n",
-        "if __name__ == \"__main__\":\n",
-        "    main()\n"
-      ]
-    }
-  ]
-}
+import time
+import json
+import html
+import logging
+import sys
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+
+# Configuration
+BASE_URL = "https://kktix.com/"
+EVENT_NAME = "sample_event"  # Update with your event name for testing
+CATEGORY_NAME = "Entertainment"  # Update with your event category
+DESIRED_TICKET_PRICES = ["800", "3,200"]  # Acceptable ticket prices for testing
+TICKET_TYPE = "B1"  # Ticket type to target for testing
+PREFERRED_PRICE = "800"  # Preferred price for testing
+QUANTITY = "1"  # Number of tickets for testing
+REFRESH_INTERVAL = 5  # in seconds for slower testing
+MAX_WAIT_TIME = 300  # in seconds for testing
+USERNAME = "your_username_here"  # Test with a sandbox account or placeholder
+PASSWORD = "your_password_here"  # Test with a sandbox account or placeholder
+CHROME_DRIVER_PATH = "chromedriver.exe"  # Ensure ChromeDriver is in your PATH
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("bot_log.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+class TicketAutomationBot:
+    def __init__(self, driver):
+        self.driver = driver
+
+    def locate_event(self):
+        logger.info(f"Searching for event: {EVENT_NAME}")
+        self.driver.find_element(By.LINK_TEXT, CATEGORY_NAME).click()
+        search_field = self.driver.find_element(By.ID, "search_form_search")
+        search_field.send_keys(EVENT_NAME)
+        search_field.send_keys(Keys.RETURN)
+
+    def open_event_page(self):
+        try:
+            event_data = self.driver.find_element(By.XPATH, '//div[@data-react-class="SearchWrapper"]')
+            events = json.loads(event_data.get_attribute("data-react-props")).get("data", [])
+
+            for event in events:
+                if html.unescape(event["name"]).strip() == EVENT_NAME:
+                    logger.info(f"Target event found: {EVENT_NAME}")
+                    self.driver.find_element(By.XPATH, f'//a[@href="{event["public_url"]}"]').click()
+                    self.driver.find_element(By.LINK_TEXT, "Next Step").click()
+                    return
+
+            logger.error("Event not found or incorrect name specified.")
+        except Exception as e:
+            logger.error(f"Error navigating to event page: {e}")
+            raise
+
+    def login(self):
+        logger.info("Logging in...")
+        self.driver.find_element(By.LINK_TEXT, "Sign In").click()
+        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, 'user_login'))).send_keys(USERNAME)
+        self.driver.find_element(By.ID, 'user_password').send_keys(PASSWORD)
+        self.driver.find_element(By.XPATH, "//input[@value='Sign In']").click()
+
+    def purchase_ticket(self):
+        logger.info("Starting ticket purchase process...")
+        start_time = time.time()
+        while time.time() - start_time < MAX_WAIT_TIME:
+            ticket_table = self.driver.find_elements(By.CLASS_NAME, "display-table")
+            tickets = {
+                self.driver.find_element(By.XPATH, f"//div[@id='{ticket.get_attribute('id')}']//span[@class='ticket-name ng-binding']").text: ticket.get_attribute('id')
+                for ticket in ticket_table
+            }
+
+            if TICKET_TYPE in tickets:
+                ticket_id = tickets[TICKET_TYPE]
+                logger.info(f"Target ticket type located: {TICKET_TYPE}")
+
+                try:
+                    sale_status = self.driver.find_element(By.XPATH, f'//*[@id="{ticket_id}"]/div/span[4]').text
+                    if sale_status == "Not Started":
+                        logger.info("Ticket sale not started. Refreshing...")
+                        time.sleep(REFRESH_INTERVAL)
+                        self.driver.refresh()
+                        continue
+                    elif sale_status == "Sold Out":
+                        logger.warning("Tickets are sold out.")
+                        break
+
+                    ticket_price = self.driver.find_element(By.XPATH, f"//div[@id='{ticket_id}']//span[contains(@class,'ticket-price')]//span").text
+                    if PREFERRED_PRICE in ticket_price:
+                        logger.info(f"Found desired ticket price: {PREFERRED_PRICE}")
+                        self.driver.find_element(By.XPATH, f"//div[@id='{ticket_id}']//input").send_keys(QUANTITY)
+                        self.driver.find_element(By.ID, "person_agree_terms").click()
+                        self.driver.find_element(By.XPATH, "//span[contains(text(),'Next Step')]").click()
+                        logger.info("Proceeding to purchase confirmation.")
+                        break
+
+                except NoSuchElementException:
+                    logger.error("Error during ticket selection process.")
+                    continue
+
+            logger.info("Refreshing page to check availability...")
+            self.driver.refresh()
+
+def main():
+    driver = webdriver.Chrome(CHROME_DRIVER_PATH)
+    driver.get(BASE_URL)
+
+    bot = TicketAutomationBot(driver)
+    try:
+        bot.locate_event()
+        bot.open_event_page()
+        bot.login()
+        bot.purchase_ticket()
+    finally:
+        driver.quit()
+
+if __name__ == "__main__":
+    main()
