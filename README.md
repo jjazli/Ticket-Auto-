@@ -1,18 +1,18 @@
-# RRHTBX Ticket Automation Bot
+Ticket Automation Bot
 
 ## Description
-This bot automates the process of purchasing tickets on KKTix. It searches for a specified event, logs in with provided credentials, and attempts to purchase tickets when they become available based on specified criteria (e.g., ticket type and price).
+This bot automates the process of purchasing tickets. It searches for a specified event, logs in with provided credentials, and attempts to purchase tickets when they become available based on specified criteria (e.g., ticket type and price).
 
 ## Features
-- **Search for Event**: Locates the desired event on KKTix based on the event name and category.
-- **Login**: Automatically logs into KKTix using your username and password.
+- **Search for Event**: Locates the desired event  based on the event name and category.
+- **Login**: Automatically logs into  using your username and password.
 - **Ticket Selection**: Automatically selects and purchases tickets when they are available at the preferred price.
 - **Automatic Refresh**: Continuously refreshes the page to check for ticket availability.
 - **Configurable**: Adjust the ticket type, preferred price, quantity, and refresh interval as needed.
 
 ## Prerequisites
 - **Chrome Driver**: Ensure that the Chrome Driver executable (`chromedriver.exe`) is correctly configured and accessible in your system's PATH.
-- **KKTix Account**: A KKTix account with the ability to purchase tickets is required.
+- **KKTix Account**: A  account with the ability to purchase tickets is required.
 - **Python 3.x**: This script is written in Python and requires Python 3.x to run.
 - **Dependencies**:
   ```bash
@@ -22,7 +22,7 @@ This bot automates the process of purchasing tickets on KKTix. It searches for a
 # -----------------
 # To configure the bot, update the following variables in your script:
 
-BASE_URL = "https://kktix.com/"
+BASE_URL = "https://.com/"
 EVENT_NAME = "sample_event"
 CATEGORY_NAME = "Entertainment"
 DESIRED_TICKET_PRICES = ["800", "3,200"]
